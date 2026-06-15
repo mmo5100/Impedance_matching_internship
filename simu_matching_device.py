@@ -175,7 +175,7 @@ def simulate(rhoA0, rhoA1=None, t_switch=None, t_max=0.15, dt=1e-4):
 if __name__ == "__main__":
     # Exemple inspire de la Figure 2 (papier Design) :
     # reset a l'etat neutre, rhoA = 0.425 / 235 deg
-    rhoA0 = 0.60 * np.exp(1j * np.deg2rad(0))
+    rhoA0 = 0.425 * np.exp(1j * np.deg2rad(235))
     res = simulate(rhoA0, t_max=0.15)
 
     fig, axs = plt.subplots(3, 1, figsize=(8, 8), sharex=True)

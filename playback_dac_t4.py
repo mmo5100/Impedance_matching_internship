@@ -31,7 +31,7 @@ import time
 from labjack import ljm
 
 # --- Parametres ---
-nom_fichier = "mesures_20260615_133746.csv"
+nom_fichier = "signaux_test.csv"
 playback_dt = 0.05   # secondes entre deux points (ralenti vs simulation)
 n_repetitions = 1     # nombre de fois ou rejouer la sequence (0 = infini)
 
