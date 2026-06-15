@@ -1,7 +1,7 @@
 """
 Rejeu des signaux simules (eps_a -> DAC0, eps_g -> DAC1) via le LabJack T4.
 
-Lit signaux_test.csv (genere par export_simulation_csv.py) et ecrit les
+Lit signaux_test.csv (genere par export_simu_csv.py) et ecrit les
 valeurs successives sur les sorties analogiques DAC0/DAC1 (plage 0-5V),
 avec un pas de temps "playback_dt" choisi pour etre confortable a observer
 (independant du pas de temps de la simulation, qui est trop fin pour le
