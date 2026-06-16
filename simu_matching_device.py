@@ -1,16 +1,15 @@
 """
 Simulation simplifiee de la dynamique du dispositif d'accord automatique
-ICRH-TEXTOR (d'apres Durodie & Vervier, "Design of an Automatic Matching
-Device for TEXTOR's ICRH System", 1992).
+ICRH-TEXTOR.
 
-Objectif : reproduire QUALITATIVEMENT le comportement dynamique decrit dans
+Objectif : reproduire le comportement dynamique decrit dans
 le papier (positions/vitesses des condensateurs, signaux d'erreur, temps de
 stabilisation), afin de disposer d'un outil de reference et, plus tard, de
 generer des signaux de test (eps_a, eps_g, |rho_G|, x_a, x_g) injectables
 via les sorties DAC du LabJack T4.
 
 ============================================================================
-SIMPLIFICATIONS ASSUMEES (a affiner avec les donnees reelles / ton encadrant)
+SIMPLIFICATIONS ASSUMEES 
 ============================================================================
 1. Modele RF :
    - Chaque "stub" (condensateur + inductance serie + stub inductif) est
@@ -68,15 +67,15 @@ def b_stub(C):
     w = 2 * np.pi * f
 
     def raw(Cc):
-        return w * Cc / (1 - (w ** 2) * Ls_series * Cc)
+        return w * Cc / (1 - (w ** 2) * Ls_series * Cc)   # Z = jwL_s + 1/(jwC)  -> Y=1/Z
 
-    return Z0 * (raw(C) - raw(C_neutral))
+    return Z0 * (raw(C) - raw(C_neutral)) #on retire le self de compensation et on normalise avec Z0
 
 
 def abcd_line(theta):
-    """Matrice ABCD d'une ligne sans pertes, longueur electrique theta=beta*l."""
+    """Matrice transmission ABCD d'une ligne sans pertes, longueur electrique theta=beta*l."""
     return np.array([[np.cos(theta), 1j * Z0 * np.sin(theta)],
-                      [1j * np.sin(theta) / Z0, np.cos(theta)]], dtype=complex)
+                      [1j * np.sin(theta) / Z0, np.cos(theta)]], dtype=complex)  #
 
 
 def abcd_shunt(B):
@@ -109,7 +108,7 @@ def error_signals(Ca, Cg, rhoA):
 v_max = 0.25      # m/s
 a_max = 50.0      # m/s^2
 k_a = 50.0 / 0.05  # s^-1  (= 1000)
-k_v = 1.0          # GAIN A CALIBRER (eps sans dimension -> m/s)
+k_v = 2          # GAIN A CALIBRER (eps sans dimension -> m/s)
 
 
 def simulate(rhoA0, rhoA1=None, t_switch=None, t_max=0.15, dt=1e-4):
@@ -173,10 +172,10 @@ def simulate(rhoA0, rhoA1=None, t_switch=None, t_max=0.15, dt=1e-4):
 
 
 if __name__ == "__main__":
-    # Exemple inspire de la Figure 2 (papier Design) :
     # reset a l'etat neutre, rhoA = 0.425 / 235 deg
     rhoA0 = 0.425 * np.exp(1j * np.deg2rad(235))
-    res = simulate(rhoA0, t_max=0.15)
+    rhoA1 = 0.425 * np.exp(1j * np.deg2rad(127))
+    res = simulate(rhoA0, rhoA1=rhoA1, t_switch=0.1, t_max=0.3)
 
     fig, axs = plt.subplots(3, 1, figsize=(8, 8), sharex=True)
 
