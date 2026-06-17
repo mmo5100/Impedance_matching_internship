@@ -48,7 +48,7 @@ condition initiale $\rho_{A0}$ (module + phase, modifiable dans le fichier).
 
 
 
-### 3. Pont simulation ↔ LabJack (DAC)
+### 3. Pont simulation <-> LabJack (DAC)
 
 ```bash
 python export_simulation_csv.py   # genere signaux_test.csv (150 points)

@@ -12,14 +12,14 @@ import simu_matching_device as sim
 # ================================================================
 # PARAMETRES à modifier
 # ================================================================
-f_mhz = 25
+f_mhz = 32.5
 rhoA  = 0.425 * np.exp(1j * np.deg2rad(235))  # exemple du papier
 
 # ================================================================
 # GRANDEURS DEPENDANT DE LA FREQUENCE
 # ================================================================
 c_light = 3e8
-Ls      = 70e-9 # 70nH = valeur dans le papier first result dans le papier design c'est 20nH 
+Ls      = 20e-9 # 70nH = valeur dans le papier first result dans le papier design c'est 20nH 
 w       = 2 * np.pi * f_mhz * 1e6
 beta_f  = w / c_light
 
@@ -48,7 +48,6 @@ print(f"rhoA      : |rhoA| = {abs(rhoA):.3f},  phase = {np.angle(rhoA, deg=True)
 print(f"lt optimal    : {lt_ref:.3f} m  (Table 1 papier a {f_mhz} MHz)")
 print(f"b_min     : {b_min:.4f}  (x=50mm)")
 print(f"b_max     : {b_max:.4f}  (x=18mm)")
-print(f"Delta_b   : {b_max - b_min:.4f}")
 print()
 
 # ================================================================
@@ -69,7 +68,7 @@ def residus(params, lt_val, rhoA_val):
     zA_ohm = (1 + rhoA_val) / (1 - rhoA_val) * sim.Z0
     zG_ohm = (B - zA_ohm * D) / (zA_ohm * C_ - A)
     yG     = 1.0 / (zG_ohm / sim.Z0)
-    return [yG.real - 1.0, yG.imag]
+    return [yG.real - 1.0, yG.imag] #adaptation parfaite quand le residu vaut [0,0]
 
 # ================================================================
 # GRILLE : carte du residu pour rhoA donne, lt du module sim
@@ -151,13 +150,15 @@ plt.tight_layout()
 DELTA_LT = 0.061 #vient table papier design
 N_PHASES = 36 # 10° entre chaque phase
 R_TEST   = np.linspace(0.02, 0.65, 40) #valeur min à max de rhoA + nombre de points de resolution 
-options  = {"350 mm": 0.350 + DELTA_LT, "0.74 mm": 0.74 + DELTA_LT, "915 mm": 0.915 + DELTA_LT, } #si plus de longueurs dispos rajouter ici 
+options  = {"350 mm": 0.350 + DELTA_LT,  "915 mm": 0.915 + DELTA_LT, } #si plus de longueurs dispos rajouter ici 
 phases   = np.linspace(0, 2 * np.pi, N_PHASES, endpoint=False)
 
 def gamma2min(lt_val):
     """
-    Plus grand |rhoA|^2 [%] tel que pour TOUTES les phases,
-    il existe (b_a, b_g) dans [b_min, b_max] realisant yG=1.
+    (|rhoA|_max)^2
+    Teste des valeurs de reflexion rhoA de plus en plus grandes en balayant des phases différentes de 0 à 360°.
+    Retourne la puissance réfléchie maximale (en %) que le système est capable de corriger à 100% peut importe la phase. 
+    Plus le pourcentage est grand, plus la longueur de la ligne choisie est robuste face aux désaccords.
     """
     best_r2 = 0.0
     for r in R_TEST:  #teste les modules du plus petit au plus grand 
@@ -202,11 +203,25 @@ print("=" * 55)
 print(f"RESULTATS a {f_mhz} MHz")
 print("=" * 55)
 
-# Recherche de la longueur ideale
-lt_candidates = np.linspace(0.3, 1.5, 25)
+# Recherche de la longueur ideale -> passa 1 grossière 
+lt_candidates_1 = np.linspace(0.3, 1.5, 25)
 scores_lt = {}
-for lt_c in lt_candidates:
+for lt_c in lt_candidates_1:
     scores_lt[lt_c] = gamma2min(lt_c)
+
+
+lt_best_1 = max(scores_lt, key=scores_lt.get)
+
+# Passe 2 : fine autour du maximum trouve (+/- 50mm, 20 pts -> resolution ~5mm)
+lt_candidates_2 = np.linspace(
+    max(0.3, lt_best_1 - 0.05),
+    min(1.5, lt_best_1 + 0.05),
+    20
+)
+for lt_c in lt_candidates_2:
+    if lt_c not in scores_lt:
+        scores_lt[lt_c] = gamma2min(lt_c)
+
 
 lt_ideal      = max(scores_lt, key=scores_lt.get)
 lt_ideal_mech = (lt_ideal - DELTA_LT) * 1000
@@ -238,8 +253,7 @@ for name, lt_val in options.items():
 meilleure = max(scores, key=scores.get)
 print()
 print(f"  => CHOISIR : {meilleure}  "
-      f"(Gamma2min = {scores[meilleure]:.1f}% "
-      f"vs {scores[[k for k in scores if k != meilleure][0]]:.1f}%)")
+      f"(Gamma2min = {scores[meilleure]:.1f}% )")
 
 plt.show()
  
