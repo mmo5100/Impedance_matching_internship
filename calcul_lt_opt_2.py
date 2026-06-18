@@ -60,8 +60,8 @@ def ls_from_Cs(Cs):
     return theta / beta
 
 
-ls = 0.46 #ls_from_Cs(Cs_neutre)
-#b_self_fixe = -Z0 * raw(Cs_neutre)        # constante : ne depend PAS de C
+ls = 0.46 #ls_from_Cs(Cs_neutre) #soit on impose ls soit on la calcule à partir de la formule en commentaire
+#b_self_fixe = -Z0 * raw(Cs_neutre)        
 b_self_fixe = -(1/np.tan(beta*ls))
 print ("iciiiiiiiiiiiiiiiii")
 print(np.tan(beta*ls))
@@ -81,7 +81,7 @@ def b_total(C):
 
 
 # ============================================================================
-# RESEAU ABCD -- formules explicites (utiles pour le balayage vectorise)
+# RESEAU ABCD 
 # ============================================================================
 def ABCD(b_a, b_g, theta):
     """A,B,C,D du reseau {shunt b_a}--{ligne theta}--{shunt b_g}"""
@@ -144,7 +144,7 @@ for lt_c in lt_candidats:
 
 lt_grossier = max(scores, key=scores.get)
 
-# Raffinement local autour du meilleur candidat grossier
+# Raffinement autour du meilleur candidat grossier
 print(f"\n--- Raffinement autour de lt={lt_grossier:.3f} m ---")
 lt_fins = np.linspace(max(0.3, lt_grossier - 0.05), lt_grossier + 0.05, 21)
 scores_fins = {}
@@ -210,10 +210,11 @@ plt.tight_layout()
 
 
 # ============================================================================
-# DECISION ENTRE LONGUEURS MECANIQUES DISPONIBLES
+# DECISION ENTRE LONGUEURS MECANIQUES DISPOS
 # ============================================================================
 DELTA_LT = 0  # ecart electrique/mecanique, Table 1 papier Design
-options = {"350 mm": 0.350 + DELTA_LT, "740 mm": 0.740 + DELTA_LT, "915 mm": 0.915 + DELTA_LT}
+
+options = {"350 mm": 0.350 + DELTA_LT, "915 mm": 0.915 + DELTA_LT}
 
 print("\n" + "=" * 60)
 print(f"DECISION -- longueurs mecaniques disponibles ({f_mhz} MHz)")
