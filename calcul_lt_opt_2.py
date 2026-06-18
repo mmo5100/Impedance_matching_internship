@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # ============================================================================
 # PARAMETRES PHYSIQUES
 # ============================================================================
-f_mhz = 25
+f_mhz = 37.5
 f = f_mhz * 1e6
 c_light = 3e8
 Z0 = 50.0
@@ -31,7 +31,10 @@ if f_mhz == 32.5:
     Cs_neutre = 135.1e-12   
     
 if f_mhz == 38:
-    Cs_neutre = 135.1e-12  
+    Cs_neutre = 138.9e-12 
+    
+if f_mhz == 37.5:
+    Cs_neutre = 138.9e-12   
 
 
 Ca_min, Ca_max = 40e-12, 205e-12   # plage de travail des condensateurs (papier Design)
@@ -51,18 +54,24 @@ def ls_from_Cs(Cs):
     cible = Z0 * raw(Cs)                 # cot(beta*ls) = Z0*raw(Cs)
     theta = np.arctan(1.0 / cible)        # dans ]-pi/2, pi/2]
     if theta <= 0:
-        theta += np.pi                    # ramener dans ]0, pi[ (ls > 0)
+        theta += np.pi  # ramener dans ]0, pi[ (ls > 0)
+        
+    print(raw(Cs))
     return theta / beta
 
 
-ls = ls_from_Cs(Cs_neutre)
-b_self_fixe = -Z0 * raw(Cs_neutre)        # constante : ne depend PAS de C
+ls = 0.46 #ls_from_Cs(Cs_neutre)
+#b_self_fixe = -Z0 * raw(Cs_neutre)        # constante : ne depend PAS de C
+b_self_fixe = -(1/np.tan(beta*ls))
+print ("iciiiiiiiiiiiiiiiii")
+print(np.tan(beta*ls))
+print(b_self_fixe)
+
 
 print(f"--- Modele du stub a {f_mhz} MHz (Ls_serie={Ls_serie*1e9:.0f} nH) ---")
 print(f"Cs neutre choisi   : {Cs_neutre*1e12:.1f} pF")
-print(f"ls (self fixe)     : {ls*1000:.1f} mm  "
-      f"(verif cot(beta*ls)={1/np.tan(beta*ls):.4f} vs Z0*raw(Cs)={Z0*raw(Cs_neutre):.4f})")
-print(f"b_self_fixe        : {b_self_fixe:.4f}  (constante, n'evolue pas avec C)")
+print(f"ls (self fixe)     : {ls*1000:.1f} mm  ")
+print(f"b_self_fixe        : {b_self_fixe:.4f}")
 print()
 
 
@@ -126,7 +135,7 @@ def gamma2min(lt, n=220, n_phase_bins=360):
 # BALAYAGE DE lt POUR TROUVER L'OPTIMUM
 # ============================================================================
 print("--- Balayage de lt (grossier) ---")
-lt_candidats = np.linspace(0.5, 1.6, 23)
+lt_candidats = np.linspace(0.5, 1.6, 25)
 scores = {}
 for lt_c in lt_candidats:
     g2, _ = gamma2min(lt_c, n=120, n_phase_bins=90)
@@ -203,7 +212,7 @@ plt.tight_layout()
 # ============================================================================
 # DECISION ENTRE LONGUEURS MECANIQUES DISPONIBLES
 # ============================================================================
-DELTA_LT = 0.061  # ecart electrique/mecanique, Table 1 papier Design
+DELTA_LT = 0  # ecart electrique/mecanique, Table 1 papier Design
 options = {"350 mm": 0.350 + DELTA_LT, "740 mm": 0.740 + DELTA_LT, "915 mm": 0.915 + DELTA_LT}
 
 print("\n" + "=" * 60)
