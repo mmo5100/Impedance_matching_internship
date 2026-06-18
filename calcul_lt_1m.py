@@ -132,32 +132,12 @@ def gamma2min(lt, n=220, n_phase_bins=360):
     return r_min ** 2 * 100, pts
 
 
+
+
 # ============================================================================
 # BALAYAGE DE lt POUR TROUVER L'OPTIMUM
 # ============================================================================
-print("--- Balayage de lt (grossier) ---")
-lt_candidats = np.linspace(0.5, 1.6, 25)
-scores = {}
-for lt_c in lt_candidats:
-    g2, _ = gamma2min(lt_c, n=120, n_phase_bins=90)
-    scores[lt_c] = g2
-    print(f"  lt={lt_c:.3f} m   Gamma2min={g2:5.1f} %")
-
-lt_grossier = max(scores, key=scores.get)
-
-# Raffinement autour du meilleur candidat grossier
-print(f"\n--- Raffinement autour de lt={lt_grossier:.3f} m ---")
-lt_fins = np.linspace(max(0.3, lt_grossier - 0.05), lt_grossier + 0.05, 21)
-scores_fins = {}
-for lt_c in lt_fins:
-    g2, _ = gamma2min(lt_c, n=220, n_phase_bins=180)
-    scores_fins[lt_c] = g2
-
-lt_opt = max(scores_fins, key=scores_fins.get)
-#lt_opt = 1
-g2_opt = scores_fins[lt_opt]
-
-print(f"\n=> lt optimal : {lt_opt:.3f} m   (Gamma2min = {g2_opt:.1f} %)")
+lt_opt = 1
 
 # ============================================================================
 # FIGURE 2a -- reproduction pour lt_opt
