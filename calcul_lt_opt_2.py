@@ -18,7 +18,7 @@ Z0 = 50.0
 w = 2 * np.pi * f
 beta = w / c_light
 
-Ls_serie = 20e-9        # H, inductance serie mesuree (First Results->70nH)
+Ls_serie = 70e-9        # H, inductance serie mesuree (First Results->70nH)
 
 
 if f_mhz == 25:
@@ -27,7 +27,7 @@ if f_mhz == 25:
 if f_mhz == 29:
     Cs_neutre = 133.3e-12
  
-if f_mhz == 32.5:
+if f_mhz == 32.5 or f_mhz==32:
     Cs_neutre = 135.1e-12   
     
 if f_mhz == 38:
@@ -60,12 +60,13 @@ def ls_from_Cs(Cs):
     return theta / beta
 
 
-ls = 0.46 #ls_from_Cs(Cs_neutre) #soit on impose ls soit on la calcule à partir de la formule en commentaire
-#b_self_fixe = -Z0 * raw(Cs_neutre)        
-b_self_fixe = -(1/np.tan(beta*ls))
-print ("iciiiiiiiiiiiiiiiii")
-print(np.tan(beta*ls))
-print(b_self_fixe)
+#ls = 0.46 #soit on impose ls 
+ls = ls_from_Cs(Cs_neutre) #soit on la calcule à partir de la formule en commentaire
+b_self_fixe = -Z0 * raw(Cs_neutre)        
+#b_self_fixe = -(1/np.tan(beta*ls)) #quand on a ls imposé   
+#print ("iciiiiiiiiiiiiiiiii")
+#print(np.tan(beta*ls))
+#print(b_self_fixe)
 
 
 print(f"--- Modele du stub a {f_mhz} MHz (Ls_serie={Ls_serie*1e9:.0f} nH) ---")
@@ -212,7 +213,7 @@ plt.tight_layout()
 # ============================================================================
 # DECISION ENTRE LONGUEURS MECANIQUES DISPOS
 # ============================================================================
-DELTA_LT = 0  # ecart electrique/mecanique, Table 1 papier Design
+DELTA_LT = 0.061  # ecart electrique/mecanique, Table 1 papier Design
 
 options = {"350 mm": 0.350 + DELTA_LT, "915 mm": 0.915 + DELTA_LT}
 

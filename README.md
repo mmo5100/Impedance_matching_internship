@@ -1,9 +1,5 @@
 # Impedance Matching Internship — TEXTOR ICRH Automatic Matching Device
 
-Stage Master 1 — outils logiciels (LabJack T4, simulation, calibration) pour
-l'étude du dispositif d'accord automatique d'impédance du système ICRH de
-TEXTOR.
-
 ## Contexte
 
 Le dispositif étudié est un second double "stub tuner" (deux condensateurs
