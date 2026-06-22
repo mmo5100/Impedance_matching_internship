@@ -1,25 +1,16 @@
 """
 Reconstruction du double stub tuner (Ca - lt - Cg, stub ls en court-circuit)
-avec pyRFtk, pour comparaison/validation croisee avec le modele ABCD ecrit
-a la main dans calcul_lt_1m.py.
+avec pyRFtk.
 
-Topologie (cf TomasCircuit.py comme modele de reference) :
+Topologie:
 
     antenne ---[Ca]--- (lt) ---[Cg]--- generateur
                 |                |
                (sc)             (sc)
 
   - Ca, Cg : condensateurs variables, MODELISES comme rfRLC (capacite +
-    self serie Ls_serie), exactement comme b_total(C) = b_capa(C) + b_self_fixe
-    dans calcul_lt_1m.py -- SAUF que dans pyRFtk le "+b_self_fixe" (stub fixe
-    ls) n'existe pas nativement dans rfRLC : on l'ajoute comme un STUB
-    SEPARE (ligne ls en court-circuit), connecte au meme noeud que Ca/Cg.
+    self serie Ls_serie).
   - lt : ligne de transmission (rfTRL) entre les deux stubs.
-
-ATTENTION : ce script n'a pas pu etre execute dans cet environnement
-(pas d'acces reseau pour installer pyRFtk) -- a tester et corriger de ton
-cote. La logique est construite a partir du code source de rfCircuit.py
-et de l'exemple TomasCircuit.py que tu as fournis.
 """
 
 import numpy as np
@@ -146,8 +137,6 @@ def rhoA_matched_pyrftk(Ca, Cg, lt_val=lt, f_hz=f_hz):
     ct = construire_circuit(Ca, Cg, lt_val)
     S = ct.getS(f_hz)  # matrice S 2x2, ports dans l'ordre ['antenne','generateur']
     # S11 = reflexion au port antenne QUAND le port generateur est charge
-    # par Z0 (rhoG=0, cad yG=1) -- c'est exactement rhoA_matched de
-    # calcul_lt_1m.py
     return S[0, 0]
 
 
