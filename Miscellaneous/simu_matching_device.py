@@ -4,40 +4,7 @@ ICRH-TEXTOR.
 
 Objectif : reproduire le comportement dynamique decrit dans
 le papier (positions/vitesses des condensateurs, signaux d'erreur, temps de
-stabilisation), afin de disposer d'un outil de reference et, plus tard, de
-generer des signaux de test (eps_a, eps_g, |rho_G|, x_a, x_g) injectables
-via les sorties DAC du LabJack T4.
-
-============================================================================
-SIMPLIFICATIONS ASSUMEES 
-============================================================================
-1. Modele RF :
-   - Chaque "stub" (condensateur + inductance serie + stub inductif) est
-     represente par une susceptance shunt b_stub(C), NULLE a une valeur de
-     capacite "neutre" C_neutral (cf Table 1 - First Results, ~135 pF a
-     32.5 MHz), avec une inductance serie Ls = 70 nH (valeur MESUREE,
-     papier First Results, plus realiste que les 20 nH supposes en
-     conception).
-   - Le reseau {stub Ca} -- {ligne lt} -- {stub Cg} relie le port "antenne"
-     (charge rhoA) au port "generateur" (admittance normalisee yG).
-
-2. Signaux d'erreur :
-   - eps_g ~ b_G  (partie imaginaire de yG)
-   - eps_a ~ (g_G - 1)  (ecart de la partie reelle de yG a 1)
-   Ce sont des APPROXIMATIONS qui respectent les deux criteres du papier
-   (zero unique en yG=1, signe constant de la derivee), mais PAS la formule
-   exacte linearisee en V1, V2, V+ (qui depend de l1, l2 ET de details de
-   calibration electronique non disponibles ici).
-
-3. Dynamique (section 4 du papier - celle-ci est fidele) :
-   - vitesse demandee = k_v * eps_i, clippee a +/- v_max * (1 - |rho_G|)
-   - acceleration = k_a * (v_demandee - v_actuelle), clippee a +/- a_max
-   - v_max = 0.25 m/s, a_max = 50 m/s^2, k_a = 50/0.05 = 1000 s^-1
-     (valeurs donnees dans le papier)
-   - k_v est un GAIN A CALIBRER (le papier le donne en (m/s)/kV, mais nos
-     eps_a, eps_g sont sans dimension ; k_v=1.0 donne des ordres de
-     grandeur de temps de stabilisation comparables aux Figures 3-4).
-============================================================================
+stabilisation).
 """
 
 import numpy as np
@@ -140,12 +107,7 @@ def simulate(rhoA0, rhoA1=None, t_switch=None, t_max=0.15, dt=1e-4):
         eps_a_arr[i - 1], eps_g_arr[i - 1] = eps_a, eps_g
         rho_gen[i - 1] = abs(rho_g)
 
-        # vitesse demandee, clippee selon |rho_G| (cf V-/V+ au generateur)
-        # NOTE : dans ce modele simplifie, eps_a et eps_g ont des sens de
-        # variation opposes par rapport a leur condensateur respectif sur
-        # la plage de travail (40-205 pF) -> signes de feedback differents.
-        # Ces signes sont EMPIRIQUES (propres a ce modele de substitution),
-        # a NE PAS reporter directement sur l'electronique reelle.
+        
         vmax_i = v_max * max(0.05, 1 - abs(rho_g))
         v_dem_a = np.clip(+k_v * eps_a, -vmax_i, vmax_i)
         v_dem_g = np.clip(-k_v * eps_g, -vmax_i, vmax_i)
