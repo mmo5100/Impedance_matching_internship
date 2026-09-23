@@ -1,0 +1,2 @@
+timestamp_pc,cycle,n_samples,VA_avg,VG_avg,Vplus_avg,eps_a_avg,eps_g_avg,position_Ca_avg,position_Cg_avg
+2026-08-06 13:41:08,1,100,3.606254,3.561975,3.441836,-0.068688,-0.095516,3.504351,3.258405

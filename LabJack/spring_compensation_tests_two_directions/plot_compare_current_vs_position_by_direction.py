@@ -1,157 +1,169 @@
-#!/usr/bin/env python3
 """
-Compare le courant (AIN2) en fonction de la position (AIN0) entre deux
-fichiers CSV d'acquisition (meme format que le script d'acquisition avec
-pile de compensation : horodatage, temps_s, AIN0, AIN1, AIN2, AIN3,
-courant, position, commande_V_reelle, commande_V_DAC, phase).
+plot_compare_current_vs_position_by_direction.py
+-------------------------------------------------
+Compare motor current vs. capacitor position for two acquisitions
+(e.g. "without springs" vs. "springs back"), splitting each sweep
+into its forward and backward direction (round-trip sweep -> 2 branches).
 
-L'"offset" positif/negatif fait reference au sens de la commande reelle
-envoyee au moteur (V_reel = V_DAC - OFFSET_PILE) : phase "aller"
-(commande > 0) vs phase "retour" (commande < 0). Une regression
-polynomiale d'ordre 2 (quadratique) courant(position) est calculee
-separement pour ces deux sens, pour chacun des deux fichiers. Les
-points de repos (commande == 0, pas de mouvement commande) sont exclus
-des regressions. Les coefficients sont imprimes dans le terminal et les
-courbes ajustees sont superposees au nuage de points.
+Usage
+-----
+    python plot_compare_current_vs_position_by_direction.py file1.csv file2.csv
 
-Usage:
-    python compare_courant_position.py fichier1.csv fichier2.csv
-    python compare_courant_position.py fichier1.csv fichier2.csv --label1 "Avant" --label2 "Apres"
+Optional arguments
+-------------------
+    --pos-col NAME     Force the column name used for position
+                        (default: auto-detect a column containing "AIN0"
+                        or "position", case-insensitive)
+    --cur-col NAME      Force the column name used for current
+                        (default: auto-detect a column containing "AIN2"
+                        or "current", case-insensitive)
+    --labels L1 L2      Custom legend labels for file1 / file2
+                        (default: derived from the file names)
+    --smooth N          Rolling-median window (in samples) used only to
+                        determine sweep direction robustly (default: 5)
+    --out FILE          Output image file (default: current_vs_position_compare.png)
+
+The script does NOT assume a fixed column order: it inspects the header
+of each CSV and tries to find the right columns automatically. If it
+can't find them, it prints the available column names so you can re-run
+with --pos-col / --cur-col.
 """
 
 import argparse
+import os
+import sys
+
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
-def charger(csv_path, col_position, col_courant, col_commande):
-    df = pd.read_csv(csv_path)
-    if col_commande not in df.columns:
-        raise SystemExit(
-            f"Colonne de commande '{col_commande}' introuvable dans {csv_path}. "
-            f"Colonnes disponibles : {list(df.columns)}"
-        )
-    return df[col_position], df[col_courant], df[col_commande]
+def find_column(columns, keywords):
+    """Return the first column whose name contains one of the keywords
+    (case-insensitive). Returns None if nothing matches."""
+    for kw in keywords:
+        for c in columns:
+            if kw.lower() in str(c).lower():
+                return c
+    return None
 
 
-def regression_quadratique(pos, cour, commande, label, plage_min, plage_max):
-    """
-    Calcule une regression quadratique (ordre 2) courant(position),
-    separement pour commande > 0 (offset/sens positif) et commande < 0
-    (offset/sens negatif). Les points au repos (commande == 0) sont
-    exclus, ainsi que les points dont la position est hors de
-    [plage_min, plage_max]. Retourne un dict {nom_zone: coeffs} et
-    imprime les coefficients.
-    """
-    pos = np.asarray(pos, dtype=float)
-    cour = np.asarray(cour, dtype=float)
-    commande = np.asarray(commande, dtype=float)
+def load_and_prepare(path, pos_col=None, cur_col=None, smooth=5):
+    """Load one CSV, auto-detect (or use forced) position/current columns,
+    and split the data into 'forward' and 'backward' sweep branches."""
+    df = pd.read_csv(path)
 
-    masque_plage = (pos >= plage_min) & (pos <= plage_max)
+    if pos_col is None:
+        pos_col = find_column(df.columns, ["AIN0", "position", "pos"])
+    if cur_col is None:
+        cur_col = find_column(df.columns, ["AIN2", "current", "courant"])
 
-    resultats = {}
+    if pos_col is None or cur_col is None:
+        print(f"\n[!] Could not auto-detect columns in '{path}'.")
+        print(f"    Available columns: {list(df.columns)}")
+        print("    Re-run with --pos-col / --cur-col to specify them explicitly.")
+        sys.exit(1)
 
-    for nom_zone, masque_cmd in (("positif", commande > 0), ("negatif", commande < 0)):
-        masque = masque_cmd & masque_plage
-        n_pts = masque.sum()
-        if n_pts < 3:
-            print(f"[{label}] Sens de commande {nom_zone} : pas assez de points "
-                  f"({n_pts}) pour une regression d'ordre 2, ignoree.")
-            resultats[nom_zone] = None
-            continue
+    pos = df[pos_col].to_numpy(dtype=float)
+    cur = df[cur_col].to_numpy(dtype=float)
 
-        coeffs = np.polyfit(pos[masque], cour[masque], 2)
-        a, b, c = coeffs
-        print(f"[{label}] Regression quadratique - commande {nom_zone} "
-              f"(n={n_pts} points) : "
-              f"courant = {a:.6g} * position^2 + {b:.6g} * position + {c:.6g}")
+    # Smooth the position with a rolling median just to get a robust
+    # sign of the local slope (this is only used to classify direction,
+    # the raw, unsmoothed data is what gets plotted).
+    pos_series = pd.Series(pos)
+    pos_smooth = pos_series.rolling(window=max(1, smooth), center=True,
+                                     min_periods=1).median().to_numpy()
 
-        resultats[nom_zone] = coeffs
+    d = np.gradient(pos_smooth)
+    # Avoid a direction flip on exact-zero-slope samples (holds, plateaus):
+    # forward-fill the last nonzero sign.
+    sign = np.sign(d)
+    last = 1.0
+    for i in range(len(sign)):
+        if sign[i] == 0:
+            sign[i] = last
+        else:
+            last = sign[i]
 
-    return resultats
+    forward_mask = sign > 0
+    backward_mask = ~forward_mask
+
+    return {
+        "pos_col": pos_col,
+        "cur_col": cur_col,
+        "pos": pos,
+        "cur": cur,
+        "forward": forward_mask,
+        "backward": backward_mask,
+    }
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("fichier1", help="Premier fichier CSV")
-    parser.add_argument("fichier2", help="Deuxieme fichier CSV")
-    parser.add_argument("--label1", default=None, help="Legende pour le fichier 1")
-    parser.add_argument("--label2", default=None, help="Legende pour le fichier 2")
-    parser.add_argument("--col-position", default="AIN0", help="Nom de la colonne position (defaut: AIN0)")
-    parser.add_argument("--col-courant", default="AIN2", help="Nom de la colonne courant (defaut: AIN2)")
-    parser.add_argument("--col-commande", default="commande_V_reelle",
-                         help="Nom de la colonne de commande reelle, dont le signe definit "
-                              "l'offset positif/negatif (defaut: commande_V_reelle)")
-    parser.add_argument("--plage-min", type=float, default=-3.0,
-                         help="Borne basse de position incluse dans la regression (defaut: -1.0 V)")
-    parser.add_argument("--plage-max", type=float, default=6.0,
-                         help="Borne haute de position incluse dans la regression (defaut: 8.0 V)")
-    parser.add_argument("--out", default="comparaison_courant_position.png", help="Nom du fichier image de sortie")
+    parser = argparse.ArgumentParser(
+        description="Compare Ca current vs. position for two acquisitions, "
+                    "split by sweep direction (forward/backward).")
+    parser.add_argument("file1", help="First CSV file (e.g. without springs)")
+    parser.add_argument("file2", help="Second CSV file (e.g. springs back)")
+    parser.add_argument("--pos-col", default=None,
+                        help="Column name to use for position (both files)")
+    parser.add_argument("--cur-col", default=None,
+                        help="Column name to use for current (both files)")
+    parser.add_argument("--labels", nargs=2, default=None,
+                        metavar=("LABEL1", "LABEL2"),
+                        help="Legend labels for file1 / file2")
+    parser.add_argument("--smooth", type=int, default=5,
+                        help="Rolling-median window (samples) for direction detection")
+    parser.add_argument("--out", default="current_vs_position_compare.png",
+                        help="Output image filename")
+    parser.add_argument("--xlim", type=float, nargs=2, default=[-6, 8],
+                        metavar=("XMIN", "XMAX"),
+                        help="X-axis (position) display range in volts (default: -6 6)")
+    parser.add_argument("--ylim", type=float, nargs=2, default=[-3, 3],
+                        metavar=("YMIN", "YMAX"),
+                        help="Y-axis (current) display range in volts (default: -6 6)")
     args = parser.parse_args()
 
-    label1 = args.label1 or args.fichier1
-    label2 = args.label2 or args.fichier2
+    if args.labels:
+        label1, label2 = args.labels
+    else:
+        label1 = os.path.splitext(os.path.basename(args.file1))[0]
+        label2 = os.path.splitext(os.path.basename(args.file2))[0]
 
-    pos1, cour1, cmd1 = charger(args.fichier1, args.col_position, args.col_courant, args.col_commande)
-    pos2, cour2, cmd2 = charger(args.fichier2, args.col_position, args.col_courant, args.col_commande)
+    d1 = load_and_prepare(args.file1, args.pos_col, args.cur_col, args.smooth)
+    d2 = load_and_prepare(args.file2, args.pos_col, args.cur_col, args.smooth)
 
-    print("=" * 70)
-    print("Coefficients des regressions quadratiques (courant = a*x^2 + b*x + c)")
-    print("Zones definies par le signe de la commande reelle (sens de deplacement)")
-    print(f"Regression limitee a la plage de position [{args.plage_min:g}, {args.plage_max:g}] V")
-    print("=" * 70)
-    coeffs1 = regression_quadratique(pos1, cour1, cmd1, label1, args.plage_min, args.plage_max)
-    coeffs2 = regression_quadratique(pos2, cour2, cmd2, label2, args.plage_min, args.plage_max)
-    print("=" * 70)
+    print(f"File 1 ({args.file1}): position column = '{d1['pos_col']}', "
+          f"current column = '{d1['cur_col']}', {len(d1['pos'])} points")
+    print(f"File 2 ({args.file2}): position column = '{d2['pos_col']}', "
+          f"current column = '{d2['cur_col']}', {len(d2['pos'])} points")
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(8, 6))
 
-    ax.plot(pos1, cour1, ".", markersize=3, alpha=0.6, label=label1, color="tab:blue")
-    ax.plot(pos2, cour2, ".", markersize=3, alpha=0.6, label=label2, color="tab:orange")
+    ms = 4  # marker size, matching the small-dot style of Figure 5 in the report
 
-    # Superposition des courbes de regression
-    couleurs = {
-        (label1, "positif"): "navy",
-        (label1, "negatif"): "royalblue",
-        (label2, "positif"): "darkorange",
-        (label2, "negatif"): "peru",
-    }
+    # File 1 -- orange family
+    ax.scatter(d1["pos"][d1["forward"]], d1["cur"][d1["forward"]],
+               s=ms, color="tab:orange", label=f"{label1} -- forward")
+    ax.scatter(d1["pos"][d1["backward"]], d1["cur"][d1["backward"]],
+               s=ms, color="darkred", label=f"{label1} -- backward")
 
-    for label, pos, commande, coeffs in (
-        (label1, pos1, cmd1, coeffs1),
-        (label2, pos2, cmd2, coeffs2),
-    ):
-        pos = np.asarray(pos, dtype=float)
-        commande = np.asarray(commande, dtype=float)
-        masque_plage = (pos >= args.plage_min) & (pos <= args.plage_max)
-        for nom_zone, coefs in coeffs.items():
-            if coefs is None:
-                continue
-            if nom_zone == "positif":
-                x_zone = pos[(commande > 0) & masque_plage]
-            else:
-                x_zone = pos[(commande < 0) & masque_plage]
-            if x_zone.size == 0:
-                continue
-            x_fit = np.linspace(x_zone.min(), x_zone.max(), 200)
-            y_fit = np.polyval(coefs, x_fit)
-            ax.plot(
-                x_fit, y_fit, "-", linewidth=2,
-                color=couleurs[(label, nom_zone)],
-                label=f"{label} - fit quad. (commande {nom_zone})",
-            )
+    # File 2 -- blue family
+    ax.scatter(d2["pos"][d2["forward"]], d2["cur"][d2["forward"]],
+               s=ms, color="tab:blue", label=f"{label2} -- forward")
+    ax.scatter(d2["pos"][d2["backward"]], d2["cur"][d2["backward"]],
+               s=ms, color="navy", label=f"{label2} -- backward")
 
-    ax.set_xlabel(f"Position - {args.col_position} [V]")
-    ax.set_ylabel(f"Current - {args.col_courant} [V]")
-    ax.set_title("Comparison current vs position (par sens de commande)")
-    ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.3)
+    ax.set_xlabel(f"Position -- {d1['pos_col']}")
+    ax.set_ylabel(f"Current -- {d1['cur_col']}")
+    ax.set_title("Comparison of Ca current vs. position\n(with vs. without spring compensation, by sweep direction)")
+    ax.set_xlim(args.xlim)
+    ax.set_ylim(args.ylim)
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.3)
 
-    fig.tight_layout()
-    #fig.savefig(args.out, dpi=150)
-    #print(f"Graphique enregistre dans : {args.out}")
-
+    plt.tight_layout()
+    plt.savefig(args.out, dpi=150)
+    print(f"\nSaved plot to: {args.out}")
     plt.show()
 
 

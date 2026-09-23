@@ -87,7 +87,7 @@ INVERSER_PORTS = False                # see port convention above
 # lt (length between the 2 stubs) and ls (fixed stub length) are both
 # IMPOSED here (not auto-computed by circuit_pyrftk.py):
 LT_VAL = 0.415   # m -- <-- SET your imposed value for lt here
-LS_VAL = 0.915   # m -- <-- SET your imposed value for ls here
+LS_VAL = 0.460   # m -- <-- SET your imposed value for ls here
 
 # construire_circuit() reads 'ls' as a global variable of the
 # circuit_pyrftk module (not a parameter) -- so we overwrite the value

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # ============================================================================
 # PARAMETRES PHYSIQUES
 # ============================================================================
-f_mhz = 25
+f_mhz = 38
 f = f_mhz * 1e6
 c_light = 3e8
 Z0 = 50.0
@@ -60,8 +60,8 @@ def ls_from_Cs(Cs):
     return theta / beta
 
 
-#ls = 0.46 #soit on impose ls 
-ls = ls_from_Cs(Cs_neutre) #soit on la calcule à partir de la formule en commentaire
+ls = 0.46 #soit on impose ls 
+#ls = ls_from_Cs(Cs_neutre) #soit on la calcule à partir de la formule en commentaire
 b_self_fixe = -Z0 * raw(Cs_neutre)        
 #b_self_fixe = -(1/np.tan(beta*ls)) #quand on a ls imposé   
 #print ("iciiiiiiiiiiiiiiiii")

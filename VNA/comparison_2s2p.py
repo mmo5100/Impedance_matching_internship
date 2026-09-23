@@ -93,6 +93,8 @@ def main():
     axes[1].set_ylabel("Phase S12 [deg]")
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
+    
+    """
 
     axes[2].plot(f1 / 1e6, np.imag(Z1), label=name1)
     axes[2].plot(f2 / 1e6, np.imag(Z2), label=name2)
@@ -101,6 +103,7 @@ def main():
     axes[2].set_xlabel("Frequence [MHz]")
     axes[2].legend()
     axes[2].grid(True, alpha=0.3)
+    """
 
     fig.suptitle("Comparaison S12")
     fig.tight_layout()
